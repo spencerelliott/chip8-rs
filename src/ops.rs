@@ -66,6 +66,13 @@ impl OpGroup for LogicOpGroup {
                     system.pc = system.pc + 2;
                 }
             }
+            0x9 => {
+                let cmp_register = words[2] as usize;
+
+                if system.v[register] != system.v[cmp_register] {
+                    system.pc = system.pc + 2;
+                }
+            }
             _ => { }
         }
     }

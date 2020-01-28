@@ -49,6 +49,7 @@ impl System {
             0x1 => JumpOpGroup::execute(self, op),
             0x2 => CallOpGroup::execute(self, op),
             0x3..=0x5 => LogicOpGroup::execute(self, op),
+            0x9 => LogicOpGroup::execute(self, op),
             _ => println!("Unknown op code: {:X}", op)
         }
     }
