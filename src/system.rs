@@ -1,4 +1,4 @@
-use crate::ops::{get_op_code, CallOpGroup, JumpOpGroup, LogicOpGroup, OpGroup, SystemOpGroup};
+use crate::ops::{get_op_code, OP_TREE};
 
 pub struct System {
     pub v: [u8; 16],
@@ -44,13 +44,6 @@ impl System {
     fn execute_op(&mut self, op: u16) {
         let code = get_op_code(op);
 
-        match code {
-            0x0 => SystemOpGroup::execute(self, op),
-            0x1 => JumpOpGroup::execute(self, op),
-            0x2 => CallOpGroup::execute(self, op),
-            0x3..=0x5 => LogicOpGroup::execute(self, op),
-            0x9 => LogicOpGroup::execute(self, op),
-            _ => println!("Unknown op code: {:X}", op)
-        }
+        OP_TREE[code as usize](self, op & 0x0FFF);
     }
 }
