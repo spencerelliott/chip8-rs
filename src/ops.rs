@@ -1,5 +1,12 @@
 use crate::system::System;
 
+/// All avaialable opcodes where the most-significant word (`0x0XXX` - `0xFXXX`) is the index. CHIP-8
+/// uses 16 bits for op codes. The most significant word (4-bits) is generally used to define the operation
+/// performed while the next 3 bytes are the "parameters".
+/// 
+/// Each group (item within this list) handles all opcodes within the range of that most significant bit. For 
+/// example, the `0x0` group will handle any opcodes ranging from `0x0000` to `0x0FFF`, if they exist. In the
+/// case of CHIP-8, the only two opcodes in the `0x0` group are `0x0E0` and `0x0EE`.
 pub const OP_TREE: [fn(&mut System, u16); 16] = [
     |system, op| {  // 0x0XXX
         match split_op(op).1 {
@@ -86,6 +93,11 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
     },
 ];
 
+/// Splits a `u16` into an array of 4 words (4-bits) represented as `u8`
+/// 
+/// # Arguments
+/// 
+/// * `op` - The opcode to split
 fn get_op_words(op: u16) -> [u8; 4] {
     [
         ((op & 0xF000) >> 12) as u8,
@@ -95,14 +107,30 @@ fn get_op_words(op: u16) -> [u8; 4] {
     ]
 }
 
+/// Combines two words (4-bits) represented as individual `u8`s into a single `u8`
+/// 
+/// # Arguments
+/// 
+/// * `first` - The most significant word in the new byte
+/// * `second` - The least significant word in the new byte
 fn combine_words(first: u8, second: u8) -> u8 {
     first << 4 & second
 }
 
+/// Returns the most significant word from an opcode
+/// 
+/// # Arguments
+/// 
+/// * `op` - The opcode to modify
 pub fn get_op_code(op: u16) -> u16 {
     (op & 0xF000) >> 12
 }
 
+/// Splits an opcode into two bytes
+/// 
+/// # Arguments
+/// 
+/// * `op` - The opcode to split into two bytes
 pub fn split_op(op: u16) -> (u8, u8) {
     ((op >> 8) as u8, (op & 0x00FF) as u8)
 }
