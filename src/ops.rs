@@ -2,14 +2,14 @@ use crate::system::System;
 
 pub const OP_TREE: [fn(&mut System, u16); 16] = [
     |system, op| {  // 0x0XXX
-        let (_, inst) = split_op(op);
-
-        if inst == 0xE0 {
-            // Clear the screen
-        } else if inst == 0xEE {
-            // Return from subroutine
-            system.pc = system.stack[system.sp];
-            system.sp = system.sp - 1;
+        match split_op(op).1 {
+            0xE0 => {}
+            0xEE => {
+                // Return from subroutine
+                system.pc = system.stack[system.sp];
+                system.sp = system.sp - 1;
+            }
+            _ => {}
         }
     },
     |system, op| {  // 0x1XXX
