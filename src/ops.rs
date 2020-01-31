@@ -20,13 +20,13 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
         }
     },
     |system, op| {  // 0x1XXX
-        system.sp = op as usize;
+        system.sp = (op & 0x0FFF) as usize;
     },
     |system, op| {  // 0x2XXX
         // Put the program counter on the stack and jump
         system.sp = system.sp + 1;
         system.stack[system.sp] = system.pc;
-        system.pc = op as usize;
+        system.pc = (op & 0x0FFF) as usize;
     },
     |system, op| {  // 0x3XXX
         let words = get_op_words(op);
@@ -56,13 +56,66 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
         }
     },
     |system, op| {  // 0x6XXX
+        let words = get_op_words(op);
+        let register = words[1] as usize;
+        let value = combine_words(words[2], words[3]);
 
+        system.v[register] = value;
     },
     |system, op| {  // 0x7XXX
+        let words = get_op_words(op);
+        let register = words[1] as usize;
+        let value = combine_words(words[2], words[3]);
 
+        system.v[register] = system.v[register] + value;
     },
     |system, op| {  // 0x8XXX
+        let words = get_op_words(op);
+        let register1 = words[1] as usize;
+        let register2 = words[2] as usize;
 
+        match words[3] {
+            0x1 => {
+                system.v[register1] = system.v[register1] | system.v[register2];
+            }
+            0x2 => {
+                system.v[register1] = system.v[register1] & system.v[register2];
+            }
+            0x3 => {
+                system.v[register1] = system.v[register1] ^ system.v[register2];
+            }
+            0x4 => {
+                let (value, overflow) = system.v[register1].overflowing_add(system.v[register2]);
+
+                system.v[0xF] = if overflow { 1 } else { 0 };
+                system.v[register1] = value;
+            }
+            0x5 => {
+                let (value, overflow) = system.v[register1].overflowing_sub(system.v[register2]);
+
+                system.v[0xF] = if overflow { 1 } else { 0 };
+                system.v[register1] = value;
+            }
+            0x6 => {
+                let (value, overflow) = system.v[register1].overflowing_shr(1);
+
+                system.v[0xF] = if overflow { 1 } else { 0 };
+                system.v[register1] = value;
+            }
+            0x7 => {
+                let (value, overflow) = system.v[register2].overflowing_sub(system.v[register1]);
+
+                system.v[0xF] = if overflow { 1 } else { 0 };
+                system.v[register1] = value;
+            }
+            0xE => {
+                let (value, overflow) = system.v[register1].overflowing_shl(1);
+
+                system.v[0xF] = if overflow { 1 } else { 0 };
+                system.v[register1] = value;
+            }
+            _ => {}
+        }
     },
     |system, op| {  // 0x9XXX
         let words = get_op_words(op);
@@ -74,10 +127,10 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
         }
     },
     |system, op| {  // 0xAXXX
-
+        system.i = (op & 0x0FFF) as u16;
     },
     |system, op| {  // 0xBXXX
-
+        system.pc = (system.v[0x0] + (op & 0x0FFF) as u8) as usize;
     },
     |system, op| {  // 0xCXXX
 
@@ -89,7 +142,22 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
 
     },
     |system, op| {  // 0xFXXX
+        let words = get_op_words(op);
+        let register = words[1] as usize;
+        let instruction = combine_words(words[2], words[3]);
 
+        match instruction {
+            0x07 => system.v[register] = system.delay_timer,
+            0x0A => { }
+            0x15 => system.delay_timer = system.v[register],
+            0x18 => system.sound_timer = system.v[register],
+            0x1E => system.i = system.i + system.v[register] as u16,
+            0x29 => { }
+            0x33 => { }
+            0x55 => { }
+            0x65 => { }
+            _ => { }
+        }
     },
 ];
 
@@ -114,7 +182,7 @@ fn get_op_words(op: u16) -> [u8; 4] {
 /// * `first` - The most significant word in the new byte
 /// * `second` - The least significant word in the new byte
 fn combine_words(first: u8, second: u8) -> u8 {
-    first << 4 & second
+    first << 4 | second
 }
 
 /// Returns the most significant word from an opcode
