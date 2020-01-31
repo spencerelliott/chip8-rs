@@ -33,12 +33,14 @@ impl System {
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> bool {
         let op = (self.mem[self.pc] as u16) << 8 | self.mem[self.pc + 1] as u16;
-        println!("PC: {:X} - op: {:X}", self.pc, op);
+        println!("PC: {:04X} - op: {:04X}", self.pc, op);
 
         self.execute_op(op);
         self.pc = self.pc + 2;
+
+        self.mem[self.pc] != 0
     }
 
     fn execute_op(&mut self, op: u16) {

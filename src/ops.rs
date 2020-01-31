@@ -67,7 +67,8 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
         let register = words[1] as usize;
         let value = combine_words(words[2], words[3]);
 
-        system.v[register] = system.v[register] + value;
+        let (value, _) = system.v[register].overflowing_add(value);
+        system.v[register] = value;
     },
     |system, op| {  // 0x8XXX
         let words = get_op_words(op);
@@ -153,16 +154,22 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
             0x18 => system.sound_timer = system.v[register],
             0x1E => system.i = system.i + system.v[register] as u16,
             0x29 => { }
-            0x33 => { }
+            0x33 => {
+                system.mem[system.i as usize] = system.v[register] / 100;
+                system.mem[(system.i + 1) as usize] = (system.v[register] / 10) % 10;
+                system.mem[(system.i + 2) as usize] = (system.v[register] % 100) % 10;
+            }
             0x55 => {
                 for read_register in 0..register {
                     system.mem[system.i as usize + read_register] = system.v[read_register];
                 }
+                system.i = system.i + register as u16 + 1
             }
             0x65 => {
                 for read_register in 0..register {
                     system.v[read_register] = system.mem[system.i as usize + read_register];
                 }
+                system.i = system.i + register as u16 + 1
             }
             _ => { }
         }
