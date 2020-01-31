@@ -154,8 +154,16 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
             0x1E => system.i = system.i + system.v[register] as u16,
             0x29 => { }
             0x33 => { }
-            0x55 => { }
-            0x65 => { }
+            0x55 => {
+                for read_register in 0..register {
+                    system.mem[system.i as usize + read_register] = system.v[read_register];
+                }
+            }
+            0x65 => {
+                for read_register in 0..register {
+                    system.v[read_register] = system.mem[system.i as usize + read_register];
+                }
+            }
             _ => { }
         }
     },
