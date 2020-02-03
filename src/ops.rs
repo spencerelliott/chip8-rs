@@ -349,10 +349,63 @@ mod tests {
     fn test_6000() {
         let mut system = build_system(vec!(
             0x60,
-            0xF0
+            0xF0,
+
+            0x61,
+            0xFF,
+
+            0x62,
+            0xF0,
+
+            0x63,
+            0xFF,
+
+            0x64,
+            0xF0,
+
+            0x65,
+            0xFF,
+
+            0x66,
+            0xF0,
+
+            0x67,
+            0xFF,
+
+            0x68,
+            0xF0,
+
+            0x69,
+            0xFF,
+
+            0x6A,
+            0xF0,
+
+            0x6B,
+            0xFF,
+
+            0x6C,
+            0xF0,
+
+            0x6D,
+            0xFF,
+
+            0x6E,
+            0xF0,
+
+            0x6F,
+            0xFF
         ));
 
-        system.tick();
-        assert_eq!(system.v[0x0], 0xF0);
+        // Simulate all 16 opcodes to set registers
+        for _ in 0..16 {
+            system.tick();
+        }
+
+        // Check all 16 registers for alternating values (0xF0, 0xFF)
+        for i in 0..8 {
+            assert_eq!(system.v[i*2], 0xF0);
+            assert_eq!(system.v[(i*2)+1], 0xFF);
+        }
     }
 }
