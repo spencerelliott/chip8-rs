@@ -2,7 +2,7 @@ mod system;
 mod ops;
 
 use std::fs::File;
-use std::io::{prelude::*, BufReader, Write};
+use std::io::{prelude::*, BufReader};
 use std::path::Path;
 
 fn main() -> std::io::Result<()> {

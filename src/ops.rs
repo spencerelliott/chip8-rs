@@ -1,4 +1,4 @@
-use crate::system::System;
+use super::system::System;
 
 /// All avaialable opcodes where the most-significant word (`0x0XXX` - `0xFXXX`) is the index. CHIP-8
 /// uses 16 bits for op codes. The most significant word (4-bits) is generally used to define the operation
@@ -216,4 +216,42 @@ pub fn get_op_code(op: u16) -> u16 {
 /// * `op` - The opcode to split into two bytes
 pub fn split_op(op: u16) -> (u8, u8) {
     ((op >> 8) as u8, (op & 0x00FF) as u8)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::System;
+
+    /// Builds a new system containing the specified ROM memory
+    /// 
+    /// # Arguments
+    /// 
+    /// * `mem` - The ROM memory containing the desired op codes
+    fn build_system(mem: Vec<u8>) -> System {
+        let mut system = System::new();
+        system.write_rom(mem);
+
+        system
+    }
+
+    #[test]
+    fn test_00ee() {
+        let mem = vec!(
+            0x22,
+            0x04,
+
+            0x00,
+            0x00,
+
+            0x00,
+            0xEE
+        );
+        let mut system = build_system(mem);
+
+        system.tick();
+        assert_eq!(system.stack[system.sp], 0x202);
+        assert_eq!(system.pc, 0x204);
+        system.tick();
+        assert_eq!(system.pc, 0x202);
+    }
 }
