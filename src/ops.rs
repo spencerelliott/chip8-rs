@@ -20,7 +20,7 @@ pub const OP_TREE: [fn(&mut System, u16); 16] = [
         }
     },
     |system, op| {  // 0x1XXX
-        system.sp = (op & 0x0FFF) as usize;
+        system.pc = (op & 0x0FFF) as usize;
     },
     |system, op| {  // 0x2XXX
         // Put the program counter on the stack and jump
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_00ee() {
-        let mem = vec!(
+        let mut system = build_system(vec!(
             0x22,
             0x04,
 
@@ -245,13 +245,114 @@ mod tests {
 
             0x00,
             0xEE
-        );
-        let mut system = build_system(mem);
+        ));
 
         system.tick();
         assert_eq!(system.stack[system.sp], 0x202);
         assert_eq!(system.pc, 0x204);
         system.tick();
         assert_eq!(system.pc, 0x202);
+    }
+
+    #[test]
+    fn test_1000() {
+        let mut system = build_system(vec!(
+            0x12,
+            0x04
+        ));
+
+        system.tick();
+        assert_eq!(system.pc, 0x204);
+    }
+
+    #[test]
+    fn test_2000() {
+        let mut system = build_system(vec!(
+            0x22,
+            0x04
+        ));
+
+        system.tick();
+        assert_eq!(system.sp, 1);
+        assert_eq!(system.stack[system.sp], 0x202);
+        assert_eq!(system.pc, 0x204);
+    }
+
+    #[test]
+    fn test_3000_skip() {
+        let mut system = build_system(vec!(
+            0x30,
+            0x00
+        ));
+
+        system.tick();
+        assert_eq!(system.pc, 0x204);
+    }
+
+    #[test]
+    fn test_3000_no_skip() {
+        let mut system = build_system(vec!(
+            0x30,
+            0x01
+        ));
+
+        system.tick();
+        assert_eq!(system.pc, 0x202);
+    }
+
+    #[test]
+    fn test_4000_skip() {
+        let mut system = build_system(vec!(
+            0x40,
+            0x01
+        ));
+
+        system.tick();
+        assert_eq!(system.pc, 0x204);
+    }
+
+    #[test]
+    fn test_4000_no_skip() {
+        let mut system = build_system(vec!(
+            0x40,
+            0x00
+        ));
+
+        system.tick();
+        assert_eq!(system.pc, 0x202);
+    }
+
+    #[test]
+    fn test_5000_skip() {
+        let mut system = build_system(vec!(
+            0x50,
+            0x00
+        ));
+
+        system.tick();
+        assert_eq!(system.pc, 0x204);
+    }
+
+    #[test]
+    fn test_5000_no_skip() {
+        let mut system = build_system(vec!(
+            0x50,
+            0x10
+        ));
+        system.v[0x1] = 1;
+
+        system.tick();
+        assert_eq!(system.pc, 0x202);
+    }
+
+    #[test]
+    fn test_6000() {
+        let mut system = build_system(vec!(
+            0x60,
+            0xF0
+        ));
+
+        system.tick();
+        assert_eq!(system.v[0x0], 0xF0);
     }
 }
