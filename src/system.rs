@@ -1,5 +1,7 @@
 use ops::{get_op_group, OP_GROUPS};
 
+use std::io::Write;
+
 pub struct System {
     v: [u8; 16],
     i: u16,
@@ -10,11 +12,13 @@ pub struct System {
     stack: [usize; 16],
     mem: [u8; 4096],
     vmem: [u8; 64 * 32],
+    input: u16,
+    previous_input: u16,
 }
 
 impl System {
     pub fn new() -> Self {
-        Self {
+        let mut system = Self {
             v: [0; 16],
             i: 0,
             pc: 0x200,
@@ -24,7 +28,33 @@ impl System {
             stack: [0; 16],
             mem: [0; 4096],
             vmem: [0; 64 * 32],
-        }
+            input: 0,
+            previous_input: 0,
+        };
+
+        // Write reserved interpreter memory
+        (&mut system.mem[0x000..0x1FF]).write(
+            &[
+                0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+                0x20, 0x60, 0x20, 0x20, 0x70, // 1
+                0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+                0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+                0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+                0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+                0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+                0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+                0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+                0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+                0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+                0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+                0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+                0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+                0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+                0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+            ]
+        ).unwrap();
+
+        system
     }
 
     pub fn write_rom(&mut self, rom: Vec<u8>) {
@@ -33,12 +63,30 @@ impl System {
         }
     }
 
+    pub fn set_key(&mut self, key: u8, value: bool) {
+        if value {
+            self.input = self.input | (0x1 << key);
+        } else {
+            self.input = self.input & (0xFF ^ (0x1 << key));
+        }
+    }
+
     pub fn tick(&mut self) -> bool {
         let op = (self.mem[self.pc] as u16) << 8 | self.mem[self.pc + 1] as u16;
         println!("PC: {:04X} - op: {:04X}", self.pc, op);
 
-        self.pc = self.pc + 2;
+        self.pc += 2;
         self.execute_op(op);
+
+        if self.sound_timer > 0 {
+            self.sound_timer -= 1;
+        }
+
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+
+        self.previous_input = self.input;
 
         self.mem[self.pc] != 0
     }
@@ -52,6 +100,7 @@ impl System {
 
 mod ops {
     use super::System;
+    use rand::Rng;
 
     /// All avaialable opcodes where the most-significant word (`0x0XXX` - `0xFXXX`) is the index. CHIP-8
     /// uses 16 bits for op codes. The most significant word (4-bits) is generally used to define the operation
@@ -87,7 +136,7 @@ mod ops {
             let value = combine_words(words[2], words[3]);
 
             if system.v[register] == value {
-                system.pc = system.pc + 2;
+                system.pc += 2;
             }
         },
         |system, op| {  // 0x4XXX
@@ -96,7 +145,7 @@ mod ops {
             let value = combine_words(words[2], words[3]);
 
             if system.v[register] != value {
-                system.pc = system.pc + 2;
+                system.pc += 2;
             }
         },
         |system, op| {  // 0x5XXX
@@ -105,7 +154,7 @@ mod ops {
             let cmp_register = words[2] as usize;
 
             if system.v[register] == system.v[cmp_register] {
-                system.pc = system.pc + 2;
+                system.pc += 2;
             }
         },
         |system, op| {  // 0x6XXX
@@ -187,13 +236,38 @@ mod ops {
             system.pc = (system.v[0x0] + (op & 0x0FFF) as u8) as usize;
         },
         |system, op| {  // 0xCXXX
+            let words = get_op_words(op);
+            let register = words[1] as usize;
+            let value = combine_words(words[2], words[3]);
 
+            let mut rng = rand::thread_rng();
+            let rand_val = rng.gen_range(0, 255) as u8;
+
+            system.v[register] = rand_val & value;
         },
         |system, op| {  // 0xDXXX
 
         },
         |system, op| {  // 0xEXXX
+            let words = get_op_words(op);
+            let register = words[1] as usize;
+            let instruction = combine_words(words[2], words[3]);
 
+            match instruction {
+                0x9E => {
+                    if 2u16.pow(system.v[register] as u32) & system.input > 0 {
+                        system.pc += 2;
+                    }
+                }
+                0xA1 => {
+                    if 2u16.pow(system.v[register] as u32) & system.input == 0 {
+                        system.pc += 2;
+                    }
+                }
+                _ => { }
+            }
+
+            
         },
         |system, op| {  // 0xFXXX
             let words = get_op_words(op);
@@ -202,11 +276,22 @@ mod ops {
 
             match instruction {
                 0x07 => system.v[register] = system.delay_timer,
-                0x0A => { }
+                0x0A => {
+                    if system.previous_input == system.input {
+                        system.pc -= 2;
+                    } else {
+                        let key_diff = system.input ^ system.previous_input;
+                        let key_value = (key_diff as f32).log2() as u8;
+
+                        system.v[register] = key_value;
+                    }
+                }
                 0x15 => system.delay_timer = system.v[register],
                 0x18 => system.sound_timer = system.v[register],
                 0x1E => system.i = system.i + system.v[register] as u16,
-                0x29 => { }
+                0x29 => {
+                    system.i = (system.v[register] * 5) as u16;
+                }
                 0x33 => {
                     system.mem[system.i as usize] = system.v[register] / 100;
                     system.mem[(system.i + 1) as usize] = (system.v[register] / 10) % 10;
