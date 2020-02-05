@@ -1,4 +1,4 @@
-use ops::{get_op_code, OP_TREE};
+use ops::{get_op_group, OP_GROUPS};
 
 pub struct System {
     v: [u8; 16],
@@ -44,9 +44,9 @@ impl System {
     }
 
     fn execute_op(&mut self, op: u16) {
-        let code = get_op_code(op);
+        let group = get_op_group(op);
 
-        OP_TREE[code as usize](self, op & 0x0FFF);
+        OP_GROUPS[group as usize](self, op & 0x0FFF);
     }
 }
 
@@ -60,7 +60,7 @@ mod ops {
     /// Each group (item within this list) handles all opcodes within the range of that most significant bit. For 
     /// example, the `0x0` group will handle any opcodes ranging from `0x0000` to `0x0FFF`, if they exist. In the
     /// case of CHIP-8, the only two opcodes in the `0x0` group are `0x0E0` and `0x0EE`.
-    pub const OP_TREE: [fn(&mut System, u16); 16] = [
+    pub const OP_GROUPS: [fn(&mut System, u16); 16] = [
         |system, op| {  // 0x0XXX
             match split_op(op).1 {
                 0xE0 => {}
@@ -258,7 +258,7 @@ mod ops {
     /// # Arguments
     /// 
     /// * `op` - The opcode to modify
-    pub fn get_op_code(op: u16) -> u16 {
+    pub fn get_op_group(op: u16) -> u16 {
         (op & 0xF000) >> 12
     }
 
