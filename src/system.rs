@@ -178,6 +178,7 @@ mod ops {
             let register2 = words[2] as usize;
 
             match words[3] {
+                0x0 => system.v[register1] = system.v[register2],
                 0x1 => {
                     system.v[register1] = system.v[register1] | system.v[register2];
                 }
@@ -545,6 +546,23 @@ mod ops {
                 assert_eq!(system.v[i*2], 0xF0);
                 assert_eq!(system.v[(i*2)+1], 0xFF);
             }
+        }
+
+        #[test]
+        fn test_7000() {
+            let mut system = build_system(vec!(
+                0x70,
+                0xFF,
+
+                0x71,
+                0x01,
+            ));
+            system.v[0x1] = 0xFF;
+
+            system.tick();
+            assert_eq!(system.v[0x0], 0xFF);
+            system.tick();
+            assert_eq!(system.v[0x1], 0x00);
         }
     }
 }
