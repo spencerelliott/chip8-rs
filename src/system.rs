@@ -97,7 +97,11 @@ impl System {
 
         self.previous_input = self.input;
 
-        self.mem[self.pc] != 0
+        if self.mem[self.pc] == 0 {
+            println!("Uh oh, we've hit a 0 at {:04X}", self.pc);
+        }
+
+        (self.mem[self.pc] as u16) << 8 | self.mem[self.pc + 1] as u16 != 0
     }
 
     fn execute_op(&mut self, op: u16) {

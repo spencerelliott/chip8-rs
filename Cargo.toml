@@ -8,6 +8,6 @@ edition = "2018"
 
 [dependencies]
 pixels = "0.0.2"
-winit = "0.20.0"
-winit_input_helper = "0.4.0"
+winit = "0.20.0-alpha4"
+winit_input_helper = "0.4.0-alpha4"
 rand = "0.7.3"
