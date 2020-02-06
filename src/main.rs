@@ -3,10 +3,11 @@ mod system;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::path::Path;
+use std::thread;
 
 use pixels::{wgpu::Surface, Error, Pixels, SurfaceTexture};
 use winit::dpi::LogicalSize;
-use winit::event::{Event, VirtualKeyCode, WindowEvent};
+use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{EventLoop, ControlFlow};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
@@ -29,7 +30,7 @@ fn main() -> Result<(), Error> {
     let mut input = WinitInputHelper::new();
 
     let window = {
-        let size = LogicalSize::new(1024 as f64, 768 as f64);
+        let size = LogicalSize::new(256 as f64, 128 as f64);
         WindowBuilder::new()
             .with_title("tinyrenderer")
             .with_inner_size(size)
@@ -46,27 +47,37 @@ fn main() -> Result<(), Error> {
     };
 
     let mut last_frame = Instant::now();
+    let frame_duration = std::time::Duration::from_millis(16);
 
     event_loop.run(move |event, _, control_flow| {
-        if let Event::WindowEvent {
-            event: WindowEvent::RedrawRequested,
-            ..
-        } = event
-        {
-            let previous_frame_time = last_frame;
+        match event {
+            Event::RedrawRequested(_) => {
+                let previous_frame_time = last_frame;
+    
+                let mut frame = pixels.get_frame();
+                test_system.tick();
+                let framebuffer = test_system.get_framebuffer();
+                frame.write(framebuffer).unwrap();
+                pixels.render();
 
-            let frame = pixels.get_frame();
+                last_frame = Instant::now();
+    
+                let mut delta = last_frame - previous_frame_time;
+                let mut fps = (1.0 / ((delta.as_millis() as f64) / 1000.0)).round();
 
-            pixels.render();
+                if frame_duration > delta {
+                    thread::sleep(frame_duration - delta);
 
-            last_frame = Instant::now();
-
-            let delta = last_frame - previous_frame_time;
-
-            let fps = (1.0 / ((delta.as_millis() as f64) / 1000.0)).round();
-
-            window.set_title(&format!("CHIP-8 ({} fps)", fps));
+                    last_frame = Instant::now();
+                    delta = last_frame - previous_frame_time;
+                    fps = (1.0 / ((delta.as_millis() as f64) / 1000.0)).round();
+                }
+    
+                window.set_title(&format!("CHIP-8 ({} fps)", fps));
+            }
+            _ => {}
         }
+        
 
         if input.update(event) {
             if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
@@ -81,10 +92,4 @@ fn main() -> Result<(), Error> {
             window.request_redraw();
         }
     });
-
-    while test_system.tick() {
-
-    }
-
-    Ok(())
 }

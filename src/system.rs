@@ -5,7 +5,8 @@ use std::io::Write;
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 
-const MAX_INDEX: usize = WIDTH * HEIGHT;
+const COLOR_WIDTH: usize = 4;
+const MAX_INDEX: usize = WIDTH * HEIGHT * COLOR_WIDTH;
 
 pub struct System {
     v: [u8; 16],
@@ -16,7 +17,7 @@ pub struct System {
     sound_timer: u8,
     stack: [usize; 16],
     mem: [u8; 4096],
-    vmem: [u8; WIDTH * HEIGHT],
+    vmem: [u8; MAX_INDEX],
     input: u16,
     previous_input: u16,
 }
@@ -32,7 +33,7 @@ impl System {
             sound_timer: 0,
             stack: [0; 16],
             mem: [0; 4096],
-            vmem: [0; WIDTH * HEIGHT],
+            vmem: [0; MAX_INDEX],
             input: 0,
             previous_input: 0,
         };
@@ -82,7 +83,7 @@ impl System {
 
     pub fn tick(&mut self) -> bool {
         let op = (self.mem[self.pc] as u16) << 8 | self.mem[self.pc + 1] as u16;
-        println!("PC: {:04X} - op: {:04X}", self.pc, op);
+        //println!("PC: {:04X} - op: {:04X}", self.pc, op);
 
         self.pc += 2;
         self.execute_op(op);
@@ -96,10 +97,6 @@ impl System {
         }
 
         self.previous_input = self.input;
-
-        if self.mem[self.pc] == 0 {
-            println!("Uh oh, we've hit a 0 at {:04X}", self.pc);
-        }
 
         (self.mem[self.pc] as u16) << 8 | self.mem[self.pc + 1] as u16 != 0
     }
@@ -274,13 +271,16 @@ mod ops {
             for idx in 0..num_bytes {
                 for split_byte in 0..8 {
                     if bytes[idx] & (0b1000_0000 >> split_byte) != 0 {
-                        let vmem_idx = (((y + idx) * WIDTH) + (x + split_byte)) % MAX_INDEX;
+                        let vmem_idx = (((y + idx) * (WIDTH*4)) + (x + (split_byte*4))) % MAX_INDEX;
 
                         if !has_collision {
                             has_collision = system.vmem[vmem_idx] > 0;
                         }
     
-                        system.vmem[vmem_idx] ^= 1;
+                        system.vmem[vmem_idx] ^= 0xFF;
+                        system.vmem[vmem_idx+1] ^= 0xFF;
+                        system.vmem[vmem_idx+2] ^= 0xFF;
+                        system.vmem[vmem_idx+3] ^= 0xFF;
                     }
                 }
                 
