@@ -81,6 +81,16 @@ impl System {
         &self.vmem[..]
     }
 
+    pub fn run_to_next_frame(&mut self) -> bool {
+        let mut end_execution = false;
+
+        for _ in 0..10 {
+            end_execution |= self.tick();
+        }
+
+        end_execution
+    }
+
     pub fn tick(&mut self) -> bool {
         let op = (self.mem[self.pc] as u16) << 8 | self.mem[self.pc + 1] as u16;
         //println!("PC: {:04X} - op: {:04X}", self.pc, op);

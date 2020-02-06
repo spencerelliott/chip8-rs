@@ -47,7 +47,7 @@ fn main() -> Result<(), Error> {
     };
 
     let mut last_frame = Instant::now();
-    let frame_duration = std::time::Duration::from_millis(16);
+    let frame_duration = std::time::Duration::from_secs_f32(1.0/60.0);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -55,7 +55,7 @@ fn main() -> Result<(), Error> {
                 let previous_frame_time = last_frame;
     
                 let mut frame = pixels.get_frame();
-                test_system.tick();
+                test_system.run_to_next_frame();
                 let framebuffer = test_system.get_framebuffer();
                 frame.write(framebuffer).unwrap();
                 pixels.render();
@@ -84,6 +84,23 @@ fn main() -> Result<(), Error> {
                 *control_flow = ControlFlow::Exit;
                 return;
             }
+
+            test_system.set_key(0x0, input.key_held(VirtualKeyCode::Key0));
+            test_system.set_key(0x1, input.key_held(VirtualKeyCode::Key1));
+            test_system.set_key(0x2, input.key_held(VirtualKeyCode::Key2));
+            test_system.set_key(0x3, input.key_held(VirtualKeyCode::Key3));
+            test_system.set_key(0x4, input.key_held(VirtualKeyCode::Key4));
+            test_system.set_key(0x5, input.key_held(VirtualKeyCode::Key5));
+            test_system.set_key(0x6, input.key_held(VirtualKeyCode::Key6));
+            test_system.set_key(0x7, input.key_held(VirtualKeyCode::Key7));
+            test_system.set_key(0x8, input.key_held(VirtualKeyCode::Key8));
+            test_system.set_key(0x9, input.key_held(VirtualKeyCode::Key9));
+            test_system.set_key(0xA, input.key_held(VirtualKeyCode::A));
+            test_system.set_key(0xB, input.key_held(VirtualKeyCode::B));
+            test_system.set_key(0xC, input.key_held(VirtualKeyCode::C));
+            test_system.set_key(0xD, input.key_held(VirtualKeyCode::D));
+            test_system.set_key(0xE, input.key_held(VirtualKeyCode::E));
+            test_system.set_key(0xF, input.key_held(VirtualKeyCode::F));
 
             if let Some(factor) = input.scale_factor_changed() {
                 hidpi_factor = factor;
