@@ -2,6 +2,11 @@ use ops::{get_op_group, OP_GROUPS};
 
 use std::io::Write;
 
+const WIDTH: usize = 64;
+const HEIGHT: usize = 32;
+
+const MAX_INDEX: usize = WIDTH * HEIGHT;
+
 pub struct System {
     v: [u8; 16],
     i: u16,
@@ -11,7 +16,7 @@ pub struct System {
     sound_timer: u8,
     stack: [usize; 16],
     mem: [u8; 4096],
-    vmem: [u8; 64 * 32],
+    vmem: [u8; WIDTH * HEIGHT],
     input: u16,
     previous_input: u16,
 }
@@ -27,7 +32,7 @@ impl System {
             sound_timer: 0,
             stack: [0; 16],
             mem: [0; 4096],
-            vmem: [0; 64 * 32],
+            vmem: [0; WIDTH * HEIGHT],
             input: 0,
             previous_input: 0,
         };
@@ -71,6 +76,10 @@ impl System {
         }
     }
 
+    pub fn get_framebuffer(&self) -> &[u8] {
+        &self.vmem[..]
+    }
+
     pub fn tick(&mut self) -> bool {
         let op = (self.mem[self.pc] as u16) << 8 | self.mem[self.pc + 1] as u16;
         println!("PC: {:04X} - op: {:04X}", self.pc, op);
@@ -99,7 +108,7 @@ impl System {
 }
 
 mod ops {
-    use super::System;
+    use super::{WIDTH, MAX_INDEX, System};
     use rand::Rng;
 
     /// All avaialable opcodes where the most-significant word (`0x0XXX` - `0xFXXX`) is the index. CHIP-8
@@ -246,7 +255,26 @@ mod ops {
             system.v[register] = rand_val & value;
         },
         |system, op| {  // 0xDXXX
+            let words = get_op_words(op);
+            let x = system.v[words[1] as usize] as usize;
+            let y = system.v[words[2] as usize] as usize * WIDTH;
+            let num_bytes = words[3] as usize;
 
+            let bytes = &system.mem[system.i as usize..system.i as usize + num_bytes];
+
+            let mut has_collision = false;
+
+            for idx in 0..num_bytes {
+                let vmem_idx = y + (idx * WIDTH) + x;
+
+                if vmem_idx < MAX_INDEX {
+                    if !has_collision {
+                        has_collision = system.vmem[vmem_idx] & bytes[idx] > 0;
+                    }
+
+                    system.vmem[vmem_idx] ^= bytes[idx];
+                }
+            }
         },
         |system, op| {  // 0xEXXX
             let words = get_op_words(op);
