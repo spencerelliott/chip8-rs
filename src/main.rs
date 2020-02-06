@@ -30,10 +30,11 @@ fn main() -> Result<(), Error> {
     let mut input = WinitInputHelper::new();
 
     let window = {
-        let size = LogicalSize::new(256 as f64, 128 as f64);
+        let size = LogicalSize::new(512 as f64, 256 as f64);
         WindowBuilder::new()
             .with_title("CHIP-8")
             .with_inner_size(size)
+            .with_resizable(false)
             .build(&event_loop)
             .unwrap()
     };
@@ -47,9 +48,7 @@ fn main() -> Result<(), Error> {
     };
 
     let mut last_frame = Instant::now();
-    let mut last_tick = Instant::now();
     let frame_duration = std::time::Duration::from_secs_f32(1.0/60.0);
-    let tick_duration = std::time::Duration::from_secs_f32(1.0/600.0);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -57,9 +56,14 @@ fn main() -> Result<(), Error> {
                 let previous_frame_time = last_frame;
     
                 let mut frame = pixels.get_frame();
+                test_system.run_to_next_frame();
                 let framebuffer = test_system.get_framebuffer();
                 frame.write(framebuffer).unwrap();
                 pixels.render();
+
+                if Instant::now() - last_frame < frame_duration {
+                    thread::sleep(frame_duration - (Instant::now() - last_frame));
+                }
 
                 last_frame = Instant::now();
     
@@ -99,20 +103,7 @@ fn main() -> Result<(), Error> {
                 hidpi_factor = factor;
             }
 
-            let delta = Instant::now() - last_tick;
-
-            if delta < tick_duration {
-                thread::sleep(tick_duration - delta);
-            }
-
-            if last_tick.elapsed() > tick_duration {
-                test_system.tick();
-                last_tick = Instant::now();
-            }
-
-            if last_frame.elapsed() > frame_duration {
-                window.request_redraw();
-            }
+            window.request_redraw();
         }
     });
 }

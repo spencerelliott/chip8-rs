@@ -84,7 +84,7 @@ impl System {
     pub fn run_to_next_frame(&mut self) -> bool {
         let mut end_execution = false;
 
-        for _ in 0..10 {
+        for _ in 0..9 {
             end_execution |= self.tick();
         }
 
