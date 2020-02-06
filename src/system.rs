@@ -110,6 +110,7 @@ impl System {
 mod ops {
     use super::{WIDTH, MAX_INDEX, System};
     use rand::Rng;
+    use std::io::Write;
 
     /// All avaialable opcodes where the most-significant word (`0x0XXX` - `0xFXXX`) is the index. CHIP-8
     /// uses 16 bits for op codes. The most significant word (4-bits) is generally used to define the operation
@@ -121,7 +122,9 @@ mod ops {
     pub const OP_GROUPS: [fn(&mut System, u16); 16] = [
         |system, op| {  // 0x0XXX
             match split_op(op).1 {
-                0xE0 => {}
+                0xE0 => {
+                    (&mut system.vmem[..]).write(&[0; MAX_INDEX]).unwrap();
+                }
                 0xEE => {
                     // Return from subroutine
                     system.pc = system.stack[system.sp];
@@ -265,16 +268,21 @@ mod ops {
             let mut has_collision = false;
 
             for idx in 0..num_bytes {
-                let vmem_idx = y + (idx * WIDTH) + x;
+                for split_byte in 0..8 {
+                    if bytes[idx] & (0b1000_0000 >> split_byte) != 0 {
+                        let vmem_idx = (((y + idx) * WIDTH) + (x + split_byte)) % MAX_INDEX;
 
-                if vmem_idx < MAX_INDEX {
-                    if !has_collision {
-                        has_collision = system.vmem[vmem_idx] & bytes[idx] > 0;
+                        if !has_collision {
+                            has_collision = system.vmem[vmem_idx] > 0;
+                        }
+    
+                        system.vmem[vmem_idx] ^= 1;
                     }
-
-                    system.vmem[vmem_idx] ^= bytes[idx];
                 }
+                
             }
+
+            system.v[0xF] = if has_collision { 1 } else { 0 };
         },
         |system, op| {  // 0xEXXX
             let words = get_op_words(op);
