@@ -278,7 +278,7 @@ mod ops {
             // 0xDXXX
             let words = get_op_words(op);
             let x = system.v[words[1] as usize] as usize;
-            let y = system.v[words[2] as usize] as usize * WIDTH;
+            let y = system.v[words[2] as usize] as usize;
             let num_bytes = words[3] as usize;
 
             let bytes = &system.mem[system.i as usize..system.i as usize + num_bytes];
@@ -288,9 +288,8 @@ mod ops {
             for idx in 0..num_bytes {
                 for split_byte in 0..8 {
                     if bytes[idx] & (0b1000_0000 >> split_byte) != 0 {
-                        let vmem_idx = (((y + idx) * (WIDTH * COLOR_WIDTH))
-                            + (x + (split_byte * COLOR_WIDTH)))
-                            % MAX_INDEX;
+                        let vmem_idx =
+                            ((((y + idx) * WIDTH) + (x + split_byte)) * COLOR_WIDTH) % MAX_INDEX;
 
                         if !has_collision {
                             has_collision = system.vmem[vmem_idx] > 0;

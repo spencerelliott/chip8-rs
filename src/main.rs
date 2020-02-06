@@ -32,7 +32,7 @@ fn main() -> Result<(), Error> {
     let window = {
         let size = LogicalSize::new(256 as f64, 128 as f64);
         WindowBuilder::new()
-            .with_title("tinyrenderer")
+            .with_title("CHIP-8")
             .with_inner_size(size)
             .build(&event_loop)
             .unwrap()
