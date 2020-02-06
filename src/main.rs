@@ -47,7 +47,9 @@ fn main() -> Result<(), Error> {
     };
 
     let mut last_frame = Instant::now();
+    let mut last_tick = Instant::now();
     let frame_duration = std::time::Duration::from_secs_f32(1.0/60.0);
+    let tick_duration = std::time::Duration::from_secs_f32(1.0/600.0);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -55,24 +57,15 @@ fn main() -> Result<(), Error> {
                 let previous_frame_time = last_frame;
     
                 let mut frame = pixels.get_frame();
-                test_system.run_to_next_frame();
                 let framebuffer = test_system.get_framebuffer();
                 frame.write(framebuffer).unwrap();
                 pixels.render();
 
                 last_frame = Instant::now();
     
-                let mut delta = last_frame - previous_frame_time;
-                let mut fps = (1.0 / ((delta.as_millis() as f64) / 1000.0)).round();
-
-                if frame_duration > delta {
-                    thread::sleep(frame_duration - delta);
-
-                    last_frame = Instant::now();
-                    delta = last_frame - previous_frame_time;
-                    fps = (1.0 / ((delta.as_millis() as f64) / 1000.0)).round();
-                }
-    
+                let delta = last_frame - previous_frame_time;
+                let fps = (1.0 / ((delta.as_millis() as f64) / 1000.0)).round();
+            
                 window.set_title(&format!("CHIP-8 ({} fps)", fps));
             }
             _ => {}
@@ -106,7 +99,14 @@ fn main() -> Result<(), Error> {
                 hidpi_factor = factor;
             }
 
-            window.request_redraw();
+            if last_tick.elapsed() > tick_duration {
+                test_system.tick();
+                last_tick = Instant::now();
+            }
+
+            if last_frame.elapsed() > frame_duration {
+                window.request_redraw();
+            }
         }
     });
 }
