@@ -99,6 +99,12 @@ fn main() -> Result<(), Error> {
                 hidpi_factor = factor;
             }
 
+            let delta = Instant::now() - last_tick;
+
+            if delta < tick_duration {
+                thread::sleep(tick_duration - delta);
+            }
+
             if last_tick.elapsed() > tick_duration {
                 test_system.tick();
                 last_tick = Instant::now();
