@@ -39,8 +39,8 @@ impl System {
         };
 
         // Write reserved interpreter memory
-        (&mut system.mem[0x000..0x1FF]).write(
-            &[
+        (&mut system.mem[0x000..0x1FF])
+            .write(&[
                 0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
                 0x20, 0x60, 0x20, 0x20, 0x70, // 1
                 0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -56,16 +56,16 @@ impl System {
                 0xF0, 0x80, 0x80, 0x80, 0xF0, // C
                 0xE0, 0x90, 0x90, 0x90, 0xE0, // D
                 0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-                0xF0, 0x80, 0xF0, 0x80, 0x80  // F
-            ]
-        ).unwrap();
+                0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+            ])
+            .unwrap();
 
         system
     }
 
     pub fn write_rom(&mut self, rom: Vec<u8>) {
         for i in 0..rom.len() {
-            self.mem[0x200+i] = rom[i];
+            self.mem[0x200 + i] = rom[i];
         }
     }
 
@@ -109,19 +109,20 @@ impl System {
 }
 
 mod ops {
-    use super::{WIDTH, MAX_INDEX, System};
+    use super::{System, COLOR_WIDTH, MAX_INDEX, WIDTH};
     use rand::Rng;
     use std::io::Write;
 
     /// All avaialable opcodes where the most-significant word (`0x0XXX` - `0xFXXX`) is the index. CHIP-8
     /// uses 16 bits for op codes. The most significant word (4-bits) is generally used to define the operation
     /// performed while the next 3 bytes are the "parameters".
-    /// 
-    /// Each group (item within this list) handles all opcodes within the range of that most significant bit. For 
+    ///
+    /// Each group (item within this list) handles all opcodes within the range of that most significant bit. For
     /// example, the `0x0` group will handle any opcodes ranging from `0x0000` to `0x0FFF`, if they exist. In the
     /// case of CHIP-8, the only two opcodes in the `0x0` group are `0x0E0` and `0x0EE`.
     pub const OP_GROUPS: [fn(&mut System, u16); 16] = [
-        |system, op| {  // 0x0XXX
+        |system, op| {
+            // 0x0XXX
             match split_op(op).1 {
                 0xE0 => {
                     (&mut system.vmem[..]).write(&[0; MAX_INDEX]).unwrap();
@@ -134,16 +135,19 @@ mod ops {
                 _ => {}
             }
         },
-        |system, op| {  // 0x1XXX
+        |system, op| {
+            // 0x1XXX
             system.pc = (op & 0x0FFF) as usize;
         },
-        |system, op| {  // 0x2XXX
+        |system, op| {
+            // 0x2XXX
             // Put the program counter on the stack and jump
             system.sp = system.sp + 1;
             system.stack[system.sp] = system.pc;
             system.pc = (op & 0x0FFF) as usize;
         },
-        |system, op| {  // 0x3XXX
+        |system, op| {
+            // 0x3XXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let value = combine_words(words[2], words[3]);
@@ -152,7 +156,8 @@ mod ops {
                 system.pc += 2;
             }
         },
-        |system, op| {  // 0x4XXX
+        |system, op| {
+            // 0x4XXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let value = combine_words(words[2], words[3]);
@@ -161,7 +166,8 @@ mod ops {
                 system.pc += 2;
             }
         },
-        |system, op| {  // 0x5XXX
+        |system, op| {
+            // 0x5XXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let cmp_register = words[2] as usize;
@@ -170,14 +176,16 @@ mod ops {
                 system.pc += 2;
             }
         },
-        |system, op| {  // 0x6XXX
+        |system, op| {
+            // 0x6XXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let value = combine_words(words[2], words[3]);
 
             system.v[register] = value;
         },
-        |system, op| {  // 0x7XXX
+        |system, op| {
+            // 0x7XXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let value = combine_words(words[2], words[3]);
@@ -185,7 +193,8 @@ mod ops {
             let (value, _) = system.v[register].overflowing_add(value);
             system.v[register] = value;
         },
-        |system, op| {  // 0x8XXX
+        |system, op| {
+            // 0x8XXX
             let words = get_op_words(op);
             let register1 = words[1] as usize;
             let register2 = words[2] as usize;
@@ -201,13 +210,15 @@ mod ops {
                     system.v[register1] = system.v[register1] ^ system.v[register2];
                 }
                 0x4 => {
-                    let (value, overflow) = system.v[register1].overflowing_add(system.v[register2]);
+                    let (value, overflow) =
+                        system.v[register1].overflowing_add(system.v[register2]);
 
                     system.v[0xF] = if overflow { 1 } else { 0 };
                     system.v[register1] = value;
                 }
                 0x5 => {
-                    let (value, overflow) = system.v[register1].overflowing_sub(system.v[register2]);
+                    let (value, overflow) =
+                        system.v[register1].overflowing_sub(system.v[register2]);
 
                     system.v[0xF] = if overflow { 1 } else { 0 };
                     system.v[register1] = value;
@@ -219,7 +230,8 @@ mod ops {
                     system.v[register1] = value;
                 }
                 0x7 => {
-                    let (value, overflow) = system.v[register2].overflowing_sub(system.v[register1]);
+                    let (value, overflow) =
+                        system.v[register2].overflowing_sub(system.v[register1]);
 
                     system.v[0xF] = if overflow { 1 } else { 0 };
                     system.v[register1] = value;
@@ -233,7 +245,8 @@ mod ops {
                 _ => {}
             }
         },
-        |system, op| {  // 0x9XXX
+        |system, op| {
+            // 0x9XXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let cmp_register = words[2] as usize;
@@ -242,13 +255,16 @@ mod ops {
                 system.pc = system.pc + 2;
             }
         },
-        |system, op| {  // 0xAXXX
+        |system, op| {
+            // 0xAXXX
             system.i = (op & 0x0FFF) as u16;
         },
-        |system, op| {  // 0xBXXX
+        |system, op| {
+            // 0xBXXX
             system.pc = (system.v[0x0] + (op & 0x0FFF) as u8) as usize;
         },
-        |system, op| {  // 0xCXXX
+        |system, op| {
+            // 0xCXXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let value = combine_words(words[2], words[3]);
@@ -258,7 +274,8 @@ mod ops {
 
             system.v[register] = rand_val & value;
         },
-        |system, op| {  // 0xDXXX
+        |system, op| {
+            // 0xDXXX
             let words = get_op_words(op);
             let x = system.v[words[1] as usize] as usize;
             let y = system.v[words[2] as usize] as usize * WIDTH;
@@ -271,24 +288,25 @@ mod ops {
             for idx in 0..num_bytes {
                 for split_byte in 0..8 {
                     if bytes[idx] & (0b1000_0000 >> split_byte) != 0 {
-                        let vmem_idx = (((y + idx) * (WIDTH*4)) + (x + (split_byte*4))) % MAX_INDEX;
+                        let vmem_idx = (((y + idx) * (WIDTH * COLOR_WIDTH))
+                            + (x + (split_byte * COLOR_WIDTH)))
+                            % MAX_INDEX;
 
                         if !has_collision {
                             has_collision = system.vmem[vmem_idx] > 0;
                         }
-    
                         system.vmem[vmem_idx] ^= 0xFF;
-                        system.vmem[vmem_idx+1] ^= 0xFF;
-                        system.vmem[vmem_idx+2] ^= 0xFF;
-                        system.vmem[vmem_idx+3] ^= 0xFF;
+                        system.vmem[vmem_idx + 1] ^= 0xFF;
+                        system.vmem[vmem_idx + 2] ^= 0xFF;
+                        system.vmem[vmem_idx + 3] ^= 0xFF;
                     }
                 }
-                
             }
 
             system.v[0xF] = if has_collision { 1 } else { 0 };
         },
-        |system, op| {  // 0xEXXX
+        |system, op| {
+            // 0xEXXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let instruction = combine_words(words[2], words[3]);
@@ -304,12 +322,11 @@ mod ops {
                         system.pc += 2;
                     }
                 }
-                _ => { }
+                _ => {}
             }
-
-            
         },
-        |system, op| {  // 0xFXXX
+        |system, op| {
+            // 0xFXXX
             let words = get_op_words(op);
             let register = words[1] as usize;
             let instruction = combine_words(words[2], words[3]);
@@ -349,15 +366,15 @@ mod ops {
                     }
                     system.i = system.i + register as u16 + 1
                 }
-                _ => { }
+                _ => {}
             }
         },
     ];
 
     /// Splits a `u16` into an array of 4 words (4-bits) represented as `u8`
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `op` - The opcode to split
     fn get_op_words(op: u16) -> [u8; 4] {
         [
@@ -369,9 +386,9 @@ mod ops {
     }
 
     /// Combines two words (4-bits) represented as individual `u8`s into a single `u8`
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `first` - The most significant word in the new byte
     /// * `second` - The least significant word in the new byte
     fn combine_words(first: u8, second: u8) -> u8 {
@@ -379,18 +396,18 @@ mod ops {
     }
 
     /// Returns the most significant word from an opcode
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `op` - The opcode to modify
     pub fn get_op_group(op: u16) -> u16 {
         (op & 0xF000) >> 12
     }
 
     /// Splits an opcode into two bytes
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `op` - The opcode to split into two bytes
     pub fn split_op(op: u16) -> (u8, u8) {
         ((op >> 8) as u8, (op & 0x00FF) as u8)
@@ -401,9 +418,9 @@ mod ops {
         use super::System;
 
         /// Builds a new system containing the specified ROM memory
-        /// 
+        ///
         /// # Arguments
-        /// 
+        ///
         /// * `mem` - The ROM memory containing the desired op codes
         fn build_system(mem: Vec<u8>) -> System {
             let mut system = System::new();
@@ -414,16 +431,7 @@ mod ops {
 
         #[test]
         fn test_00ee() {
-            let mut system = build_system(vec!(
-                0x22,
-                0x04,
-
-                0x00,
-                0x00,
-
-                0x00,
-                0xEE
-            ));
+            let mut system = build_system(vec![0x22, 0x04, 0x00, 0x00, 0x00, 0xEE]);
 
             system.tick();
             assert_eq!(system.stack[system.sp], 0x202);
@@ -434,10 +442,7 @@ mod ops {
 
         #[test]
         fn test_1000() {
-            let mut system = build_system(vec!(
-                0x12,
-                0x04
-            ));
+            let mut system = build_system(vec![0x12, 0x04]);
 
             system.tick();
             assert_eq!(system.pc, 0x204);
@@ -445,10 +450,7 @@ mod ops {
 
         #[test]
         fn test_2000() {
-            let mut system = build_system(vec!(
-                0x22,
-                0x04
-            ));
+            let mut system = build_system(vec![0x22, 0x04]);
 
             system.tick();
             assert_eq!(system.sp, 1);
@@ -458,10 +460,7 @@ mod ops {
 
         #[test]
         fn test_3000_skip() {
-            let mut system = build_system(vec!(
-                0x30,
-                0x00
-            ));
+            let mut system = build_system(vec![0x30, 0x00]);
 
             system.tick();
             assert_eq!(system.pc, 0x204);
@@ -469,10 +468,7 @@ mod ops {
 
         #[test]
         fn test_3000_no_skip() {
-            let mut system = build_system(vec!(
-                0x30,
-                0x01
-            ));
+            let mut system = build_system(vec![0x30, 0x01]);
 
             system.tick();
             assert_eq!(system.pc, 0x202);
@@ -480,10 +476,7 @@ mod ops {
 
         #[test]
         fn test_4000_skip() {
-            let mut system = build_system(vec!(
-                0x40,
-                0x01
-            ));
+            let mut system = build_system(vec![0x40, 0x01]);
 
             system.tick();
             assert_eq!(system.pc, 0x204);
@@ -491,10 +484,7 @@ mod ops {
 
         #[test]
         fn test_4000_no_skip() {
-            let mut system = build_system(vec!(
-                0x40,
-                0x00
-            ));
+            let mut system = build_system(vec![0x40, 0x00]);
 
             system.tick();
             assert_eq!(system.pc, 0x202);
@@ -502,10 +492,7 @@ mod ops {
 
         #[test]
         fn test_5000_skip() {
-            let mut system = build_system(vec!(
-                0x50,
-                0x00
-            ));
+            let mut system = build_system(vec![0x50, 0x00]);
 
             system.tick();
             assert_eq!(system.pc, 0x204);
@@ -513,10 +500,7 @@ mod ops {
 
         #[test]
         fn test_5000_no_skip() {
-            let mut system = build_system(vec!(
-                0x50,
-                0x10
-            ));
+            let mut system = build_system(vec![0x50, 0x10]);
             system.v[0x1] = 1;
 
             system.tick();
@@ -525,55 +509,11 @@ mod ops {
 
         #[test]
         fn test_6000() {
-            let mut system = build_system(vec!(
-                0x60,
-                0xF0,
-
-                0x61,
-                0xFF,
-
-                0x62,
-                0xF0,
-
-                0x63,
-                0xFF,
-
-                0x64,
-                0xF0,
-
-                0x65,
-                0xFF,
-
-                0x66,
-                0xF0,
-
-                0x67,
-                0xFF,
-
-                0x68,
-                0xF0,
-
-                0x69,
-                0xFF,
-
-                0x6A,
-                0xF0,
-
-                0x6B,
-                0xFF,
-
-                0x6C,
-                0xF0,
-
-                0x6D,
-                0xFF,
-
-                0x6E,
-                0xF0,
-
-                0x6F,
-                0xFF
-            ));
+            let mut system = build_system(vec![
+                0x60, 0xF0, 0x61, 0xFF, 0x62, 0xF0, 0x63, 0xFF, 0x64, 0xF0, 0x65, 0xFF, 0x66, 0xF0,
+                0x67, 0xFF, 0x68, 0xF0, 0x69, 0xFF, 0x6A, 0xF0, 0x6B, 0xFF, 0x6C, 0xF0, 0x6D, 0xFF,
+                0x6E, 0xF0, 0x6F, 0xFF,
+            ]);
 
             // Simulate all 16 opcodes to set registers
             for _ in 0..16 {
@@ -582,8 +522,8 @@ mod ops {
 
             // Check all 16 registers for alternating values (0xF0, 0xFF)
             for i in 0..8 {
-                assert_eq!(system.v[i*2], 0xF0);
-                assert_eq!(system.v[(i*2)+1], 0xFF);
+                assert_eq!(system.v[i * 2], 0xF0);
+                assert_eq!(system.v[(i * 2) + 1], 0xFF);
             }
         }
     }
