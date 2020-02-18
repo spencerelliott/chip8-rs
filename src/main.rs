@@ -15,7 +15,7 @@ use winit_input_helper::WinitInputHelper;
 use std::time::Instant;
 
 fn main() -> Result<(), Error> {
-    let rom_path = Path::new("./roms/pong.ch8");
+    let rom_path = Path::new("./roms/breakout.ch8");
     let rom_file = File::open(rom_path).unwrap();
 
     let mut reader = BufReader::new(rom_file);
@@ -56,7 +56,12 @@ fn main() -> Result<(), Error> {
                 let previous_frame_time = last_frame;
     
                 let mut frame = pixels.get_frame();
-                test_system.run_to_next_frame();
+
+                if (Instant::now() - previous_frame_time).as_micros() > 100000 / 60 {
+                    test_system.run_to_next_frame();
+                    last_frame = Instant::now();
+                }
+                
                 let framebuffer = test_system.get_framebuffer();
                 frame.write(framebuffer).unwrap();
                 pixels.render();
@@ -64,8 +69,6 @@ fn main() -> Result<(), Error> {
                 if Instant::now() - last_frame < frame_duration {
                     thread::sleep(frame_duration - (Instant::now() - last_frame));
                 }
-
-                last_frame = Instant::now();
     
                 let delta = last_frame - previous_frame_time;
                 let fps = (1.0 / ((delta.as_millis() as f64) / 1000.0)).round();
